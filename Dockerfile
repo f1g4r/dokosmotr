@@ -1,4 +1,4 @@
-FROM python:3.11-slim-trixie
+FROM python:3.14-slim-trixie
 WORKDIR /app
 # Only the Docker client is needed; the daemon stays on the host.
 RUN apt-get update && apt-get install -y --no-install-recommends docker-cli \
