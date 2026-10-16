@@ -163,7 +163,12 @@ function renderStats() {
   status();
 }
 function status() {
-  const stale = !lastReceived || Date.now() - lastReceived > 20000;
+  const maxAge = Math.max(30000, (snapshot?.update_interval || 5) * 3000);
+  const sampleTime = snapshot?.timestamp ? Date.parse(snapshot.timestamp) : NaN;
+  const stale =
+    !lastReceived ||
+    Date.now() - lastReceived > maxAge ||
+    (Number.isFinite(sampleTime) && Date.now() - sampleTime > maxAge);
   const available = snapshot?.docker_available && !stale;
   text(
     'connection',

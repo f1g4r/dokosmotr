@@ -24,6 +24,7 @@ jobs:
         run: docker run --rm --user 0 --entrypoint sh -v "$PWD/requirements.lock:/tmp/requirements.lock:ro" dokosmotr:local -c 'pip install -q pip-audit && pip-audit -r /tmp/requirements.lock'
       - name: Start isolated preview
         run: |
+          docker create --name dokosmotr-ci-stopped dokosmotr:local true
           docker volume create dokosmotr-ci-data
           echo "TEST_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
           docker run --rm -v dokosmotr-ci-data:/app/data dokosmotr:local true

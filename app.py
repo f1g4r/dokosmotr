@@ -209,7 +209,8 @@ def create_app(overrides=None):
     history = deque(maxlen=120)
     snapshot = {"containers": [], "stats": None, "history": [], "timestamp": None,
                 "docker_available": False, "error": "Подключаемся к Docker…", "stats_error": None,
-                "server": app.config["SERVER_LABEL"], "version": VERSION}
+                "server": app.config["SERVER_LABEL"], "version": VERSION,
+                "update_interval": app.config["UPDATE_INTERVAL"]}
     app.extensions["dashboard_state"] = {"sessions": sessions, "snapshot": snapshot, "clients": clients}
     dummy_hash = generate_password_hash(secrets.token_hex(24))
 

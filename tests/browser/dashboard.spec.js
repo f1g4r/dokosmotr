@@ -17,6 +17,14 @@ test('real server: login, metrics, search, details, logs and logout', async ({ p
   await login(page);
   await expect(page.locator('#connection')).toHaveText('Live', { timeout: 20000 });
   await expect(page.locator('#metric-total')).not.toHaveText('—');
+  if (process.env.CI) {
+    const snapshot = await (await page.request.get('/api/snapshot')).json();
+    expect(snapshot.stats.scope).toBe('linux-host');
+    expect(snapshot.stats_error).toBeNull();
+    expect(
+      snapshot.containers.some((c) => c.name === 'dokosmotr-ci-stopped' && !c.running)
+    ).toBeTruthy();
+  }
   await page.locator('#search').fill('dokosmotr-preview');
   await expect(page.locator('#rows tr')).toHaveCount(1);
   await page.getByRole('button', { name: 'dokosmotr-preview', exact: true }).click();
@@ -83,4 +91,9 @@ test('untrusted names stay text; filter persists across updates; outage is visib
   fixture.error = 'Нет связи с Docker. Показаны последние полученные данные';
   await page.locator('#refresh').click();
   await expect(page.locator('#banner')).toContainText('Нет связи');
+  fixture.docker_available = true;
+  fixture.error = null;
+  fixture.timestamp = new Date(Date.now() - 120000).toISOString();
+  await page.locator('#refresh').click();
+  await expect(page.locator('#connection')).toHaveText('Нет свежих данных');
 });
