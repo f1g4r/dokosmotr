@@ -29,7 +29,7 @@ v0.2.5 с сохранением основы: **Flask + Socket.IO + Docker CLI 
 ```bash
 git clone https://github.com/f1g4r/dokosmotr.git
 cd dokosmotr
-git checkout v0.3.0
+git checkout v0.3.1
 ./install.sh
 ```
 
@@ -38,13 +38,30 @@ git checkout v0.3.0
 Если `.env` и пользователи уже существуют, они сохраняются. Данные лежат в named volume.
 Приложение и Docker CLI запускаются от UID 10001, без Linux capabilities, с файловой системой read-only.
 
-По умолчанию панель доступна **только на сервере**: <http://localhost:5080>.
-Чтобы открыть её с своего компьютера:
+По умолчанию порт `5080` опубликован на сетевых интерфейсах сервера.
+На любом ПК в той же сети открой **`http://IP-СЕРВЕРА:5080`**. Установщик выведет
+адреса сервера. IP, домен и внешний порт не нужно вписывать в приложение:
+вход, CSRF и WebSocket используют тот же адрес, который открыт в браузере.
+
+### Обновление установленной v0.3.0 для доступа из сети
 
 ```bash
-ssh -L 5080:127.0.0.1:5080 user@server
-# В браузере на своём компьютере: http://localhost:5080
+git fetch origin --tags
+git checkout v0.3.1
+./install.sh --lan
 ```
+
+`--lan` меняет только сетевые настройки: включает `0.0.0.0`, автоматический origin
+и HTTP-cookie. Твой порт, пользователи, пароли и том данных сохраняются.
+Если проект скачан архивом, распакуй новый релиз в папку проекта и запусти
+`./install.sh --lan`. Новый проект работает в сети без флагов.
+
+Для доступа только с сервера есть `./install.sh --local`.
+Если используешь HTTPS-прокси с `PUBLIC_ORIGIN`, обычное обновление `./install.sh`
+сохранит его конфигурацию; `--lan` предназначен для прямого HTTP-доступа в сети.
+
+Если TCP-порт ограничен сетевым экраном сервера, разреши входящий TCP на выбранный
+порт для своей сети. Установщик не отключает firewall и не меняет правила сети.
 
 Не открывай Docker TCP-порт 2375. Панели достаточно Unix-сокета.
 
@@ -70,8 +87,8 @@ docker compose -p dokosmotr up -d --wait
 | Переменная | По умолчанию | Назначение |
 |---|---|---|
 | `PORT` | `5080` | Свободный локальный порт |
-| `BIND_ADDRESS` | `127.0.0.1` | Адрес публикации порта |
-| `PUBLIC_ORIGIN` | `http://localhost:5080` | Точный адрес браузера, без пути; нужен CSRF/WebSocket |
+| `BIND_ADDRESS` | `0.0.0.0` | Сетевые интерфейсы; `127.0.0.1` для локального доступа |
+| `PUBLIC_ORIGIN` | пусто | Автоматически из адреса браузера; можно задать точный origin для HTTPS-прокси |
 | `COOKIE_SECURE` | `false` | Для HTTPS обязательно `true` |
 | `READ_ONLY` | `true` | Запрет start/stop/restart даже для admin |
 | `DOCKER_GID` | `0` | Числовая группа Docker-сокета |
@@ -111,8 +128,8 @@ docker.example.com {
 ```
 
 В `.env`: `PUBLIC_ORIGIN=https://docker.example.com`, `COOKIE_SECURE=true`.
-Порт панели оставь привязанным к loopback. Прокси должен поддерживать WebSocket.
-Внешний plain HTTP приложение отклоняет при запуске. `X-Forwarded-For` не считается
+Установи `BIND_ADDRESS=127.0.0.1`, если прокси работает на самом сервере. Прокси должен поддерживать WebSocket.
+Прямой HTTP-доступ в локальной сети поддерживается без отдельной настройки origin. `X-Forwarded-For` не считается
 доверенным: за прокси ограничение входов применяется к адресу прокси. Для большой
 команды добавь внешний rate limit; не включай слепое доверие forwarded-заголовкам.
 
@@ -123,7 +140,7 @@ docker.example.com {
 ```bash
 git fetch --tags origin
 # Сначала прочитай заметки нужного релиза. Локальные изменения не затираются.
-git checkout v0.3.0
+git checkout v0.3.1
 ./install.sh
 ```
 
@@ -162,7 +179,8 @@ tests/                    API/security/collector + браузерные сцен
 
 ```bash
 docker build -t dokosmotr:local .
-docker run --rm -v "$PWD/tests:/app/tests:ro" dokosmotr:local \
+docker run --rm -v "$PWD/tests:/app/tests:ro" \
+  -v "$PWD/install.sh:/app/install.sh:ro" -v "$PWD/.env.example:/app/.env.example:ro" dokosmotr:local \
   python -m unittest discover -s tests -v
 
 # Веб-тесты против локального тестового экземпляра:

@@ -3,9 +3,9 @@ services:
     build: .
     image: dokosmotr:local
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-5080}:5000"
+      - "${BIND_ADDRESS:-0.0.0.0}:${PORT:-5080}:5000"
     environment:
-      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:5080}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       READ_ONLY: ${READ_ONLY:-true}
       UPDATE_INTERVAL: ${UPDATE_INTERVAL:-5}

@@ -175,9 +175,31 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(headers['X-Frame-Options'], 'DENY')
         self.assertEqual(headers['Cache-Control'], 'no-store')
 
-    def test_public_http_fails_closed(self):
-        with self.assertRaises(ValueError):
-            dashboard.create_app({'PUBLIC_ORIGIN': 'http://public.example', 'DATA_DIR': self.temp.name})
+    def test_auto_origin_lan_login_rejects_cross_origin(self):
+        self.app.config['PUBLIC_ORIGIN'] = ''
+        self.app.config['TRUSTED_HOSTS'] = None
+        for origin in ['http://192.168.1.50:5080', 'http://server.lan:9000', 'http://[fd00::50]:5080']:
+            with self.subTest(origin=origin):
+                client = self.app.test_client()
+                csrf = client.get('/api/session', base_url=origin).json['csrf']
+                headers = {'X-CSRF-Token': csrf, 'Origin': 'http://evil.example'}
+                self.assertEqual(client.post('/api/login', base_url=origin, headers=headers, json={}).status_code, 403)
+                headers['Origin'] = origin
+                response = client.post('/api/login', base_url=origin, headers=headers,
+                                       json={'username': 'admin', 'password': PASSWORD})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(client.get('/api/snapshot', base_url=origin).status_code, 200)
+
+    def test_lan_http_origin_can_be_pinned(self):
+        app = dashboard.create_app({'TESTING': True, 'PUBLIC_ORIGIN': 'http://192.168.1.50:5080',
+                                    'DATA_DIR': self.temp.name})
+        for handler in dashboard.logging.getLogger(f'dokosmotr.audit.{id(app)}').handlers:
+            self.addCleanup(handler.close)
+        client = app.test_client()
+        response = client.get('/login', base_url='http://192.168.1.50:5080')
+        self.addCleanup(response.close)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(client.get('/login', base_url='http://evil.example').status_code, 400)
 
 
 class CollectorTests(unittest.TestCase):

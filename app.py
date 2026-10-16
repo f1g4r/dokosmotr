@@ -30,7 +30,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 ROOT = Path(__file__).resolve().parent
 ID_PATTERN = re.compile(r"[a-f0-9]{12,64}\Z")
 USER_PATTERN = re.compile(r"[a-zA-Z0-9_.-]{3,40}\Z")
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 
 def utc_now():
@@ -168,28 +168,30 @@ def create_app(overrides=None):
         DATA_DIR=data_dir, READ_ONLY=os.getenv("READ_ONLY", "true").lower() != "false",
         SESSION_COOKIE_NAME="dokosmotr_csrf", SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict", SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "false").lower() == "true",
-        MAX_CONTENT_LENGTH=4096, PUBLIC_ORIGIN=os.getenv("PUBLIC_ORIGIN", "http://localhost:5080").rstrip("/"),
+        MAX_CONTENT_LENGTH=4096, PUBLIC_ORIGIN=os.getenv("PUBLIC_ORIGIN", "").rstrip("/"),
         SESSION_TTL=int(os.getenv("SESSION_TTL", "28800")), UPDATE_INTERVAL=max(3, int(os.getenv("UPDATE_INTERVAL", "5"))),
         HOST_PROC=os.getenv("HOST_PROC", ""), DISK_PATH=os.getenv("DISK_PATH", str(data_dir)),
         SERVER_LABEL=os.getenv("SERVER_LABEL", "Docker server"), TESTING=False,
     )
     if overrides:
         app.config.update(overrides)
+    # An empty origin supports direct LAN access through any IP/hostname and mapped port.
+    # A configured origin pins a canonical address for HTTPS reverse proxies.
     origin = urlsplit(app.config["PUBLIC_ORIGIN"])
-    if origin.scheme not in {"http", "https"} or not origin.hostname or origin.path not in {"", "/"} or origin.query or origin.fragment or origin.username:
-        raise ValueError("PUBLIC_ORIGIN must be an http(s) origin without path or credentials")
-    if origin.scheme == "https" and not app.config["SESSION_COOKIE_SECURE"]:
-        raise ValueError("HTTPS requires COOKIE_SECURE=true")
-    if not app.config["TESTING"] and origin.scheme == "http" and origin.hostname not in {"localhost", "127.0.0.1", "::1"}:
-        raise ValueError("Remote access requires HTTPS; use an SSH tunnel for plain HTTP")
-    app.config["TRUSTED_HOSTS"] = [origin.hostname, "localhost", "127.0.0.1", "::1"]
+    app.config["TRUSTED_HOSTS"] = None
+    if app.config["PUBLIC_ORIGIN"]:
+        if origin.scheme not in {"http", "https"} or not origin.hostname or origin.path not in {"", "/"} or origin.query or origin.fragment or origin.username:
+            raise ValueError("PUBLIC_ORIGIN must be an http(s) origin without path or credentials")
+        if origin.scheme == "https" and not app.config["SESSION_COOKIE_SECURE"]:
+            raise ValueError("HTTPS requires COOKIE_SECURE=true")
+        app.config["TRUSTED_HOSTS"] = [origin.hostname, "localhost", "127.0.0.1", "::1"]
     data_dir = Path(app.config["DATA_DIR"])
     data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     # Sessions are process-local and revoked on restart; the signing key need not persist.
     app.config["SECRET_KEY"] = secrets.token_hex(32)
     users_file = data_dir / "users.json"
     users = json.loads(users_file.read_text()) if users_file.exists() else {}
-    sio = SocketIO(app, async_mode="threading", cors_allowed_origins=[app.config["PUBLIC_ORIGIN"]],
+    sio = SocketIO(app, async_mode="threading", cors_allowed_origins=[app.config["PUBLIC_ORIGIN"]] if app.config["PUBLIC_ORIGIN"] else None,
                    max_http_buffer_size=4096, logger=False, engineio_logger=False)
     app.extensions["dashboard_socket"] = sio
     audit = logging.getLogger(f"dokosmotr.audit.{id(app)}")
@@ -245,7 +247,8 @@ def create_app(overrides=None):
     @app.before_request
     def security_gate():
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-            if request.headers.get("Origin") not in {None, app.config["PUBLIC_ORIGIN"]}:
+            allowed_origin = app.config["PUBLIC_ORIGIN"] or request.host_url.rstrip("/")
+            if request.headers.get("Origin") not in {None, allowed_origin}:
                 return jsonify(error="Недопустимый источник запроса"), 403
             if request.headers.get("Sec-Fetch-Site") == "cross-site":
                 return jsonify(error="Межсайтовый запрос отклонён"), 403
