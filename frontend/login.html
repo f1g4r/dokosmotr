@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Вход — Докосмотр</title>
+    <link rel="stylesheet" href="/assets/css/style.css" />
+    <script src="/assets/js/theme.js"></script>
+    <script defer src="/assets/js/login.js"></script>
+  </head>
+  <body class="login-page">
+    <div class="login-shell">
+      <div class="login-intro">
+        <a class="brand" href="/"
+          ><span class="brand-mark" aria-hidden="true">d<span>°</span></span
+          ><span>докосмотр<span class="brand-caption">DOCKER WORKSPACE</span></span></a
+        >
+        <div>
+          <span class="eyebrow">ТВОЙ СЕРВЕР. ЯСНАЯ КАРТИНА.</span>
+          <h1>Каждый контейнер.<br />На своём месте.</h1>
+          <p>Следи за ресурсами, находи проблемы<br />и держи инфраструктуру под контролем.</p>
+          <div class="login-illustration" aria-hidden="true">
+            <div class="illustration-card">
+              <span class="small-dot"></span> containers <span>running</span>
+            </div>
+            <div class="illustration-card">
+              <span class="small-dot"></span> resources <span>monitored</span>
+            </div>
+            <div class="illustration-card">
+              <span class="small-dot"></span> workspace <span>connected</span>
+            </div>
+          </div>
+        </div>
+        <span class="login-footnote">Лёгкая панель для твоего Docker.</span>
+      </div>
+      <main class="login-form-panel">
+        <button class="icon-button login-theme" id="theme" aria-label="Переключить тему">◐</button>
+        <div class="login-form-wrap">
+          <span class="welcome-icon" aria-hidden="true">↗</span>
+          <h2>С возвращением</h2>
+          <p>Войди в рабочее пространство.</p>
+          <form id="login-form">
+            <label for="username">Имя пользователя</label
+            ><input
+              id="username"
+              name="username"
+              autocomplete="username"
+              required
+              maxlength="40"
+              placeholder="Твой логин"
+            /><label for="password">Пароль</label>
+            <div class="password-field">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+                maxlength="1024"
+                placeholder="Введи пароль"
+              /><button type="button" class="text-button" id="show-password" aria-pressed="false">
+                Показать
+              </button>
+            </div>
+            <p id="login-error" class="form-error" role="alert" hidden></p>
+            <button class="button primary login-submit" type="submit" id="submit">
+              Войти в Докосмотр <span aria-hidden="true">→</span>
+            </button>
+          </form>
+          <p class="login-note">
+            Доступ выдаёт администратор сервера.<br />Общих паролей по умолчанию нет.
+          </p>
+        </div>
+        <span class="login-version">Докосмотр 0.3.0</span>
+      </main>
+    </div>
+  </body>
+</html>

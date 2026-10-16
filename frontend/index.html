@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Докосмотр — контейнеры под контролем</title>
+    <link rel="stylesheet" href="/assets/css/style.css" />
+    <script src="/assets/js/theme.js"></script>
+    <script defer src="/assets/vendor/socket.io.min.js"></script>
+    <script defer src="/assets/js/main.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">К содержимому</a>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Докосмотр, главная"
+        ><span class="brand-mark" aria-hidden="true">d<span>°</span></span
+        ><span>докосмотр<span class="brand-caption">DOCKER WORKSPACE</span></span></a
+      >
+      <span class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</span>
+      <nav aria-label="Основная навигация">
+        <a class="nav-link active" href="#overview"
+          ><span aria-hidden="true">◫</span>Обзор сервера</a
+        >
+        <a class="nav-link" href="#containers"
+          ><span aria-hidden="true">▣</span>Контейнеры
+          <span id="nav-count" class="nav-count">—</span></a
+        >
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="server-avatar" aria-hidden="true">⌘</div>
+        <div>
+          <strong id="sidebar-server">Docker server</strong><small>Один сервер. Всё на виду.</small>
+        </div>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">Рабочее пространство <span>/</span> <strong>Обзор</strong></div>
+        <div class="top-actions">
+          <span class="mode-pill" id="mode">Наблюдение</span
+          ><button
+            class="icon-button"
+            id="theme"
+            aria-label="Переключить тему"
+            title="Переключить тему"
+          >
+            ◐</button
+          ><button class="avatar" id="account" aria-label="Выйти из аккаунта" title="Выйти">
+            A
+          </button>
+        </div>
+      </header>
+      <main id="main">
+        <section id="overview" aria-labelledby="page-title">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">
+                <span class="small-dot"></span><span id="server-name">DOCKER SERVER</span>
+              </div>
+              <h1 id="page-title">Всё под контролем.</h1>
+              <p class="subtitle">Контейнеры, ресурсы и события твоего сервера.</p>
+            </div>
+            <button class="button secondary" id="refresh">
+              <span aria-hidden="true">↻</span> Обновить
+            </button>
+          </div>
+          <div class="connection-line">
+            <span id="connection" class="connection pending">Подключаемся</span
+            ><span id="updated">Ожидаем первый снимок</span><span id="scope"></span>
+          </div>
+          <div id="banner" class="banner" role="status" hidden></div>
+          <div class="metrics">
+            <article class="metric-card accent">
+              <div class="metric-top">
+                Контейнеры <span class="metric-icon" aria-hidden="true">▣</span>
+              </div>
+              <div class="metric-value" id="metric-total">—</div>
+              <div class="metric-bottom">
+                <span id="metric-running">— работают</span
+                ><span id="metric-stopped">— остановлены</span>
+              </div>
+              <div class="mini-pills"><span class="small-dot"></span>Все контейнеры Docker</div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-top">
+                Процессор <span class="metric-icon" aria-hidden="true">⌁</span>
+              </div>
+              <div class="metric-value" id="metric-cpu">—<small>%</small></div>
+              <progress
+                id="cpu-progress"
+                max="100"
+                value="0"
+                aria-label="Использование CPU"
+              ></progress>
+              <div class="metric-bottom">
+                Загрузка системы <span id="cpu-caption">Нет данных</span>
+              </div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-top">
+                Память <span class="metric-icon" aria-hidden="true">▤</span>
+              </div>
+              <div class="metric-value" id="metric-memory">—</div>
+              <progress
+                id="memory-progress"
+                max="100"
+                value="0"
+                aria-label="Использование памяти"
+              ></progress>
+              <div class="metric-bottom">
+                <span id="memory-caption">Нет данных</span><span id="memory-percent">—</span>
+              </div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-top">
+                Диск данных <span class="metric-icon" aria-hidden="true">◉</span>
+              </div>
+              <div class="metric-value" id="metric-disk">—</div>
+              <progress
+                id="disk-progress"
+                max="100"
+                value="0"
+                aria-label="Использование диска"
+              ></progress>
+              <div class="metric-bottom">
+                <span id="disk-caption">Нет данных</span><span id="disk-percent">—</span>
+              </div>
+            </article>
+          </div>
+          <div class="overview-grid">
+            <article class="panel chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Пульс сервера</h2>
+                  <p>CPU и память · последние 120 замеров</p>
+                </div>
+                <div class="legend">
+                  <span><i class="cpu-key"></i>CPU</span><span><i class="memory-key"></i>RAM</span>
+                </div>
+              </div>
+              <div class="chart-wrap">
+                <div class="chart-labels"><span>100%</span><span>50%</span><span>0%</span></div>
+                <svg
+                  id="chart"
+                  class="chart"
+                  viewBox="0 0 800 120"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label="История загрузки CPU и памяти"
+                >
+                  <path class="chart-grid" d="M0 5H800 M0 60H800 M0 115H800" />
+                  <polyline id="memory-line" class="chart-memory" points="" />
+                  <polyline id="cpu-line" class="chart-cpu" points="" /></svg
+                ><span id="chart-empty" class="chart-empty">Собираем первые замеры…</span>
+              </div>
+              <div class="chart-axis">
+                <span id="chart-start">С начала наблюдения</span><span>Сейчас</span>
+              </div>
+            </article>
+            <article class="panel health-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Состояние системы</h2>
+                  <p id="health-subtitle">Ожидаем данные Docker</p>
+                </div>
+                <span class="health-orbit" aria-hidden="true">✓</span>
+              </div>
+              <div class="health-row">
+                <span>Проблемные контейнеры</span><strong id="unhealthy">—</strong>
+              </div>
+              <div class="health-row">
+                <span>Без healthcheck</span><strong id="no-health">—</strong>
+              </div>
+              <div class="health-row">
+                <span>Время работы системы</span><strong id="uptime">—</strong>
+              </div>
+              <div class="health-footnote">
+                Healthcheck показывает состояние приложения, а не только его процесса.
+              </div>
+            </article>
+          </div>
+        </section>
+        <section id="containers" class="panel containers-panel" aria-labelledby="container-title">
+          <div class="panel-heading">
+            <div class="title-row">
+              <h2 id="container-title">Контейнеры</h2>
+              <span class="count-badge" id="list-count">0</span>
+            </div>
+            <button class="text-button" id="export">
+              Экспорт CSV <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <div class="toolbar">
+            <label class="search"
+              ><span aria-hidden="true">⌕</span
+              ><input
+                id="search"
+                type="search"
+                placeholder="Найти по имени, образу или ID…"
+                aria-label="Поиск контейнеров"
+              /><kbd>/</kbd></label
+            ><label class="sr-only" for="project">Проект Compose</label
+            ><select id="project">
+              <option value="">Все проекты</option></select
+            ><label class="sr-only" for="sort">Сортировка</label
+            ><select id="sort">
+              <option value="name">По имени</option>
+              <option value="cpu">По CPU</option>
+              <option value="memory">По памяти</option>
+              <option value="state">По состоянию</option>
+            </select>
+          </div>
+          <div class="filter-row" role="group" aria-label="Фильтр состояния">
+            <button class="filter active" data-filter="all" aria-pressed="true">
+              Все <span id="filter-all">0</span></button
+            ><button class="filter" data-filter="running" aria-pressed="false">
+              Работают <span id="filter-running">0</span></button
+            ><button class="filter" data-filter="stopped" aria-pressed="false">
+              Остановлены <span id="filter-stopped">0</span></button
+            ><button class="filter" data-filter="attention" aria-pressed="false">
+              Требуют внимания <span id="filter-attention">0</span>
+            </button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Контейнер / образ</th>
+                  <th scope="col">Состояние</th>
+                  <th scope="col">CPU</th>
+                  <th scope="col">Память</th>
+                  <th scope="col">Порты</th>
+                  <th scope="col"><span class="sr-only">Действия</span></th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="empty" hidden>
+            <span aria-hidden="true">▧</span>
+            <h3 id="empty-title">Контейнеров пока нет</h3>
+            <p id="empty-message">Здесь появятся все контейнеры подключённого Docker.</p>
+            <button class="text-button" id="reset-filters">Сбросить фильтры</button>
+          </div>
+          <div class="table-footer">
+            <span id="visible-count">Ожидаем данные…</span
+            ><span>Обновляется автоматически <span class="small-dot"></span></span>
+          </div>
+        </section>
+        <footer class="page-footer">
+          <span>докосмотр <span id="version">0.3.0</span></span
+          ><span>Меньше шума. Больше ясности.</span>
+        </footer>
+      </main>
+    </div>
+    <dialog id="details" aria-labelledby="detail-title">
+      <div class="dialog-heading">
+        <div>
+          <div class="eyebrow">КОНТЕЙНЕР</div>
+          <h2 id="detail-title"></h2>
+        </div>
+        <button class="icon-button" data-close="details" aria-label="Закрыть детали">×</button>
+      </div>
+      <div id="detail-status"></div>
+      <dl id="detail-list" class="detail-list"></dl>
+      <div class="dialog-actions" id="container-actions">
+        <span id="action-note"></span
+        ><button class="button secondary" id="detail-logs">Открыть логи</button
+        ><button class="button secondary" id="action-restart">Перезапустить</button
+        ><button class="button danger" id="action-stop">Остановить</button
+        ><button class="button primary" id="action-start">Запустить</button>
+      </div>
+    </dialog>
+    <dialog id="logs" class="logs-dialog" aria-labelledby="logs-title">
+      <div class="dialog-heading">
+        <div>
+          <div class="eyebrow">ЖУРНАЛ КОНТЕЙНЕРА</div>
+          <h2 id="logs-title">Логи</h2>
+        </div>
+        <button class="icon-button" data-close="logs" aria-label="Закрыть логи">×</button>
+      </div>
+      <div class="logs-toolbar">
+        <label for="log-tail">Последние строки</label
+        ><select id="log-tail">
+          <option>200</option>
+          <option>500</option>
+          <option>2000</option></select
+        ><button class="text-button" id="reload-logs">Обновить</button
+        ><button class="text-button" id="download-logs" disabled>Скачать .log</button>
+      </div>
+      <p id="log-status" role="status"></p>
+      <pre id="log-content" tabindex="0"></pre>
+    </dialog>
+    <dialog id="confirm" class="confirm-dialog" aria-labelledby="confirm-title">
+      <div class="dialog-heading"><h2 id="confirm-title">Подтверди действие</h2></div>
+      <p id="confirm-message"></p>
+      <div class="dialog-actions">
+        <button class="button secondary" data-close="confirm">Отмена</button
+        ><button class="button danger" id="confirm-submit">Подтвердить</button>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <template id="row-template"
+      ><tr>
+        <td>
+          <button class="container-name" data-open="details"></button>
+          <div class="image-name"></div>
+          <span class="project-name"></span>
+        </td>
+        <td>
+          <span class="status-badge"></span>
+          <div class="health-label"></div>
+        </td>
+        <td class="cpu-cell"></td>
+        <td class="memory-cell"></td>
+        <td class="ports-cell"></td>
+        <td class="row-actions">
+          <button class="icon-button" data-open="logs" aria-label="Открыть логи" title="Логи">
+            ≡</button
+          ><button
+            class="icon-button"
+            data-open="details"
+            aria-label="Открыть детали"
+            title="Детали"
+          >
+            ↗
+          </button>
+        </td>
+      </tr></template
+    >
+  </body>
+</html>

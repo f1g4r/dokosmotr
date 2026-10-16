@@ -1,0 +1,6 @@
+*
+!app.py
+!requirements.txt
+!requirements.lock
+!frontend/
+!frontend/**

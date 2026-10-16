@@ -1,0 +1,12 @@
+{
+  "name": "dokosmotr-ui-tests",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "format:check": "prettier --check \"frontend/*.html\" \"frontend/css/*.css\" \"frontend/js/*.js\" \"scripts/*.cjs\" \"tests/browser/*.js\" playwright.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "prettier": "3.9.10"
+  }
+}

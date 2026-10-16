@@ -1,0 +1,7 @@
+# Optional Linux host CPU/RAM/uptime. This is unnecessary for container metrics.
+services:
+  docker-dashboard:
+    environment:
+      HOST_PROC: /host/proc
+    volumes:
+      - /proc:/host/proc:ro

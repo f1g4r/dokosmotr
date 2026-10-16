@@ -1,0 +1,44 @@
+name: Checks
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Build image
+        run: docker build -t dokosmotr:local .
+      - name: API and security tests
+        run: docker run --rm -v "$PWD/tests:/app/tests:ro" dokosmotr:local python -m unittest discover -s tests -v
+      - name: Audit dependencies
+        run: docker run --rm --user 0 --entrypoint sh -v "$PWD/requirements.lock:/tmp/requirements.lock:ro" dokosmotr:local -c 'pip install -q pip-audit && pip-audit -r /tmp/requirements.lock'
+      - name: Start isolated preview
+        run: |
+          docker volume create dokosmotr-ci-data
+          echo "TEST_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          docker run --rm -v dokosmotr-ci-data:/app/data dokosmotr:local true
+      - name: Create test user and server
+        run: |
+          printf '%s\n' "$TEST_PASSWORD" | docker run --rm -i -v dokosmotr-ci-data:/app/data dokosmotr:local python app.py user --username admin --role admin --password-stdin
+          docker run -d --name dokosmotr-preview -p 127.0.0.1:5080:5000 --group-add "$(stat -c '%g' /var/run/docker.sock)" -v /var/run/docker.sock:/var/run/docker.sock -v /proc:/host/proc:ro -e HOST_PROC=/host/proc -v dokosmotr-ci-data:/app/data -e PUBLIC_ORIGIN=http://127.0.0.1:5080 dokosmotr:local
+          for n in $(seq 1 30); do curl -fsS http://127.0.0.1:5080/healthz && break; sleep 2; done
+      - run: npm ci
+      - run: npm run format:check
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: browser-diagnostics
+          path: test-results/
+          retention-days: 3
